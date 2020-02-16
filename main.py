@@ -49,20 +49,17 @@ for row in itertools.chain(train, dev, test):
   row[src_key] = src_encoder.encode(row[src_key])
   row[tar_key] = tar_encoder.encode(row[tar_key])
 
+config = args
+config.n_embed = src_encoder.vocab_size
+config.d_out = tar_encoder.vocab_size
+
 # DONE UP TO HERE
 
-config = args
-config.n_embed = sentence_encoder.vocab_size
-config.d_out = label_encoder.vocab_size
-config.n_cells = config.n_layers
-
-# double the number of cells for bidirectional networks
-if config.birnn:
-  config.n_cells *= 2
-
 if args.resume_snapshot:
-  model = torch.load(
-    args.resume_snapshot, map_location=lambda storage, location: storage.cuda(args.gpu))
+  pass
+  # TODO: model loading from checkpoint
+  # model = torch.load(
+  #   args.resume_snapshot, map_location=lambda storage, location: storage.cuda(args.gpu))
 else:
   model = SNLIClassifier(config)
   if args.word_vectors:
