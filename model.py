@@ -66,11 +66,9 @@ class NMT(nn.Module):
         """
         # Compute sentence lengths
         source_lengths = [len(s) for s in source]
-
         # Convert list of lists into tensors
         source_padded = self.vocab.src.to_input_tensor(source, device=self.device)   # Tensor: (src_len, b)
         target_padded = self.vocab.tgt.to_input_tensor(target, device=self.device)   # Tensor: (tgt_len, b)
-
         ###     Run the network forward:
         ###     1. Apply the encoder to `source_padded` by calling `self.encode()`
         ###     2. Generate sentence masks for `source_padded` by calling `self.generate_sent_masks()`
@@ -275,7 +273,6 @@ class NMT(nn.Module):
             new_hypotheses = []
             live_hyp_ids = []
             new_hyp_scores = []
-
             for prev_hyp_id, hyp_word_id, cand_new_hyp_score in zip(prev_hyp_ids, hyp_word_ids, top_cand_hyp_scores):
                 prev_hyp_id = prev_hyp_id.item()
                 hyp_word_id = hyp_word_id.item()

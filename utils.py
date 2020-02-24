@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import nltk
 nltk.download('punkt')
-
+from tqdm import tqdm
 
 def pad_sents(sents, pad_token):
     """ Pad list of sentences according to the longest sentence in the batch.
@@ -35,7 +35,7 @@ def pad_sents(sents, pad_token):
     return sents_padded
 
 
-def read_corpus(file_path, source, space_tokenize=True):
+def read_corpus(file_path, source, space_tokenize=False):
     """ Read file, where each sentence is dilineated by a `\n`.
     @param file_path (str): path to file containing corpus
     @param source (str): "tgt" or "src" indicating whether text
@@ -44,7 +44,7 @@ def read_corpus(file_path, source, space_tokenize=True):
         for BPE input
     """
     data = []
-    for line in open(file_path):
+    for line in tqdm(open(file_path)):
         sent = nltk.word_tokenize(line) if not space_tokenize else line.strip().split()
         # only append <s> and </s> to the target sentence
         if source == 'tgt':

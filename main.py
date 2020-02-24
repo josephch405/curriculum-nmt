@@ -13,22 +13,22 @@ import torch.optim as optim
 import torch.nn as nn
 
 from torchnlp.samplers import BucketBatchSampler
-from torchnlp.datasets import wmt_dataset
+from torchnlp.datasets import iwslt_dataset
 from torchnlp.encoders.text import WhitespaceEncoder
 from torchnlp.encoders import LabelEncoder
 from torchnlp import word_to_vector
 
-from model import RNNEncoder, RNNDecoder
-from util import get_args, makedirs, collate_fn
+# from model import RNNEncoder, RNNDecoder
+# from util import get_args, makedirs, collate_fn
 
-args = get_args()
+# args = get_args()
 
-if args.gpu >= 0:
-  torch.cuda.set_device(args.gpu)
+#if args.gpu >= 0:
+#  torch.cuda.set_device(args.gpu)
 
 # load dataset
-train, dev, test = wmt_dataset(train=True, dev=True, test=True)
-
+train, dev, test = iwslt_dataset(language_extensions=['fr', 'en'], train=True, dev=True, test=True)
+'''
 src_key = 'en'
 tar_key = 'de'
 
@@ -194,3 +194,4 @@ for epoch in range(args.epochs):
                               len(train_sampler), 100. *
                               (1 + batch_idx) / len(train_sampler),
                               loss.item(), ' ' * 8, n_correct / n_total * 100, ' ' * 12))
+                              '''
