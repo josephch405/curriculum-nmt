@@ -44,12 +44,17 @@ def read_corpus(file_path, source, space_tokenize=False):
         for BPE input
     """
     data = []
+    i = 0
     for line in tqdm(open(file_path)):
         sent = nltk.word_tokenize(line) if not space_tokenize else line.strip().split()
         # only append <s> and </s> to the target sentence
         if source == 'tgt':
             sent = ['<s>'] + sent + ['</s>']
         data.append(sent)
+        # TODO: nicer iteration dev flag
+        i += 1
+        if i > 100 and True:
+            break
     return data
 
 

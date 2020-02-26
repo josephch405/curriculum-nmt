@@ -1,13 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 """
-CS224N 2019-20: Homework 4
-run.py: Run Script for Simple NMT Model
-Pencheng Yin <pcyin@cs.cmu.edu>
-Sahil Chopra <schopra8@stanford.edu>
-Vera Lin <veralin@stanford.edu>
-
 Usage:
     run.py train --train-src=<file> --train-tgt=<file> --dev-src=<file> --dev-tgt=<file> --vocab=<file> [options]
     run.py decode [options] MODEL_PATH TEST_SOURCE_FILE OUTPUT_FILE
@@ -49,7 +40,7 @@ import time
 
 from docopt import docopt
 from nltk.translate.bleu_score import corpus_bleu, sentence_bleu, SmoothingFunction
-from model import Hypothesis, NMT
+from model import Hypothesis, NMT, TransformerNMT
 import numpy as np
 from typing import List, Tuple, Dict, Set, Union
 from tqdm import tqdm
@@ -58,6 +49,7 @@ from vocab import Vocab, VocabEntry
 
 import torch
 import torch.nn.utils
+import transformers
 
 import gc
 
@@ -136,10 +128,20 @@ def train(args: Dict):
 
     vocab = Vocab.load(args['--vocab'])
 
-    model = NMT(embed_size=int(args['--embed-size']),
-                hidden_size=int(args['--hidden-size']),
-                dropout_rate=float(args['--dropout']),
-                vocab=vocab)
+    # model = NMT(embed_size=int(args['--embed-size']),
+    #             hidden_size=int(args['--hidden-size']),
+    #             dropout_rate=float(args['--dropout']),
+    #             vocab=vocab)
+
+    model = TransformerNMT(
+        vocab,
+        int(args['--hidden-size']),
+        6,
+        8,
+        2048,
+        float(args['--dropout'])
+    )
+
     model.train()
 
     uniform_init = float(args['--uniform-init'])
@@ -157,7 +159,9 @@ def train(args: Dict):
 
     model = model.to(device)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=float(args['--lr']))
+    optimizer = torch.optim.Adam(
+        model.parameters(),
+        lr=float(args['--lr']))
 
     num_trial = 0
     train_iter = patience = cum_loss = report_loss = cum_tgt_words = report_tgt_words = 0

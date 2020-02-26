@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.utils
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence
+import transformers
 
 from model_embeddings import ModelEmbeddings
 Hypothesis = namedtuple('Hypothesis', ['value', 'score'])
@@ -337,3 +338,33 @@ class NMT(nn.Module):
         }
 
         torch.save(params, path)
+
+class TransformerNMT(nn.Module):
+    def __init__(self,
+        vocab,
+        hidden_size: int,
+        num_hidden_layers = 6,
+        num_attention_heads = 8,
+        intermediate_size = 2048,
+        dropout_rate = 0.1):
+        super(TransformerNMT, self).__init__()
+
+        self.vocab = vocab
+
+        self.encoder = transformers.BertModel(transformers.BertConfig(
+            vocab_size=len(vocab.src),
+            hidden_size=hidden_size,
+            num_hidden_layers=num_hidden_layers,
+            num_attention_heads=num_attention_heads,
+            intermediate_size=intermediate_size,
+            attention_probs_dropout_prob = dropout_rate
+        ))
+        self.decoder = transformers.BertModel(transformers.BertConfig(
+            vocab_size=len(vocab.src),
+            hidden_size=hidden_size,
+            num_hidden_layers=num_hidden_layers,
+            num_attention_heads=num_attention_heads,
+            intermediate_size=intermediate_size,
+            attention_probs_dropout_prob = dropout_rate,
+            decoder=True
+        ))
