@@ -35,7 +35,7 @@ def pad_sents(sents, pad_token):
     return sents_padded
 
 
-def read_corpus(file_path, source, space_tokenize=False):
+def read_corpus(file_path, source, space_tokenize=False, dev_mode=False):
     """ Read file, where each sentence is dilineated by a `\n`.
     @param file_path (str): path to file containing corpus
     @param source (str): "tgt" or "src" indicating whether text
@@ -53,7 +53,7 @@ def read_corpus(file_path, source, space_tokenize=False):
         data.append(sent)
         # TODO: nicer iteration dev flag
         i += 1
-        if i > 100 and True:
+        if i > 100 and dev_mode:
             break
     return data
 
