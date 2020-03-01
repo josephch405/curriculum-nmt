@@ -49,7 +49,6 @@ from vocab import Vocab, VocabEntry
 
 import torch
 import torch.nn.utils
-import transformers
 
 import gc
 
@@ -135,14 +134,7 @@ def train(args: Dict):
     #             dropout_rate=float(args['--dropout']),
     #             vocab=vocab)
 
-    model = TransformerNMT(
-        vocab,
-        int(args['--hidden-size']),
-        6,
-        8,
-        2048,
-        float(args['--dropout'])
-    )
+    model = TransformerNMT(vocab)
 
     model.train()
 
