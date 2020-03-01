@@ -81,3 +81,10 @@ def batch_iter(data, batch_size, shuffle=False):
 
         yield src_sents, tgt_sents
 
+def batch_iter_cl(data, batch_size, shuffle=False, pacing_func, scoring_func):
+    """ Yield batches of source and target sentences reverse sorted by length (largest to smallest).
+    @param data (list of (src_sent, tgt_sent)): list of tuples containing source and target sentence
+    @param batch_size (int): batch size
+    @param shuffle (boolean): whether to randomly shuffle the dataset
+    """
+

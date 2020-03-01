@@ -51,6 +51,8 @@ import torch
 import torch.nn.utils
 import transformers
 
+from scoring import load_order, balance_order
+
 import gc
 
 
@@ -170,6 +172,11 @@ def train(args: Dict):
     cum_examples = report_examples = epoch = valid_num = 0
     hist_valid_scores = []
     train_time = begin_time = time.time()
+
+    print("Sorting dataset based on difficulty...")
+    order = load_order(order_name, dataset)
+    order = balance_order(order, dataset)
+
     print('begin Maximum Likelihood training')
     while True:
         epoch += 1
