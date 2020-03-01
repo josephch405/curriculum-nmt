@@ -2,7 +2,15 @@
 
 # Setup
 
+0. Create conda environment: `conda create --name curriculum_nmt python=3.7`
 1. Install requirements in `requirements.txt`
 1. Run `bash run_iwslt.sh download` to download the IWSLT dataset
 1. Run `bash run_iwslt.sh vocab` to generate vocab files. This generates a
     `iwslt_vocab.json`
+
+# References
+1. Fine-Tuning by Curriculum Learning for Non-Autoregressive
+Neural Machine Translation [arXiv](https://arxiv.org/abs/1911.08717)
+2. On The Power of Curriculum Learning in Training Deep Networks [arXiv](https://arxiv.org/abs/1904.03626) [code](https://github.com/GuyHacohen/curriculum_learning)
+3. Competence-based Curriculum Learning for Neural Machine Translation [arXiv](https://arxiv.org/abs/1903.09848)
+4. Improving Neural Machine Translation Models with Monolingual Data [arXiv](https://arxiv.org/abs/1511.06709)
