@@ -42,6 +42,7 @@ def read_corpus(file_path, source, space_tokenize=False, dev_mode=False):
         is of the source language or target language
     @param space_tokenize (bool): Whether to tokenize with just spaces. Useful
         for BPE input
+    @param dev_mode (bool): Only reads first 100 lines; for fast iteration
     """
     data = []
     i = 0

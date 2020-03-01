@@ -1,5 +1,6 @@
 torch==1.4
 torchvision
-transformers
+transformers==2.4.1
 pytorch-nlp
 docopt
+nltk

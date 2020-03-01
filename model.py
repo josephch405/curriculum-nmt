@@ -368,3 +368,8 @@ class TransformerNMT(nn.Module):
             attention_probs_dropout_prob = dropout_rate,
             decoder=True
         ))
+
+    def forward(x):
+        encoded = self.encoder(x)
+        decoded = self.decoder(encoded)
+        return decoded

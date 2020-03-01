@@ -103,15 +103,17 @@ def tuple_length_ok(src_tok: list, tgt_tok: list, limit: int):
 def clean_data(data: list, limit: int):
     return list(filter(lambda t: tuple_length_ok(t[0], t[1], limit), data))
 
+dev_mode = True
+
 def train(args: Dict):
     """ Train the NMT Model.
     @param args (Dict): args from cmd line
     """
-    train_data_src = read_corpus(args['--train-src'], source='src')
-    train_data_tgt = read_corpus(args['--train-tgt'], source='tgt')
+    train_data_src = read_corpus(args['--train-src'], source='src', dev_mode=dev_mode)
+    train_data_tgt = read_corpus(args['--train-tgt'], source='tgt', dev_mode=dev_mode)
 
-    dev_data_src = read_corpus(args['--dev-src'], source='src')
-    dev_data_tgt = read_corpus(args['--dev-tgt'], source='tgt')
+    dev_data_src = read_corpus(args['--dev-src'], source='src', dev_mode=dev_mode)
+    dev_data_tgt = read_corpus(args['--dev-tgt'], source='tgt', dev_mode=dev_mode)
 
     train_data = list(zip(train_data_src, train_data_tgt))
     dev_data = list(zip(dev_data_src, dev_data_tgt))
