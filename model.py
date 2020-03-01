@@ -341,35 +341,43 @@ class NMT(nn.Module):
 
 class TransformerNMT(nn.Module):
     def __init__(self,
-        vocab,
-        hidden_size: int,
-        num_hidden_layers = 6,
-        num_attention_heads = 8,
-        intermediate_size = 2048,
-        dropout_rate = 0.1):
+        vocab, embed_size=512):
+        # embed_size,
+        # hidden_size: int,
+        # num_hidden_layers = 6,
+        # num_attention_heads = 8,
+        # intermediate_size = 2048,
+        # dropout_rate = 0.1):
         super(TransformerNMT, self).__init__()
 
+        self.model_embeddings = ModelEmbeddings(embed_size, vocab)
         self.vocab = vocab
+        self.device = None
+        self.transformer = torch.nn.Transformer(d_model=embed_size)
 
-        self.encoder = transformers.BertModel(transformers.BertConfig(
-            vocab_size=len(vocab.src),
-            hidden_size=hidden_size,
-            num_hidden_layers=num_hidden_layers,
-            num_attention_heads=num_attention_heads,
-            intermediate_size=intermediate_size,
-            attention_probs_dropout_prob = dropout_rate
-        ))
-        self.decoder = transformers.BertModel(transformers.BertConfig(
-            vocab_size=len(vocab.src),
-            hidden_size=hidden_size,
-            num_hidden_layers=num_hidden_layers,
-            num_attention_heads=num_attention_heads,
-            intermediate_size=intermediate_size,
-            attention_probs_dropout_prob = dropout_rate,
-            decoder=True
-        ))
+    def forward(self, source: List[List[str]], target: List[List[str]]) -> torch.Tensor:
+        source_padded = self.vocab.src.to_input_tensor(source, device=self.device)   # Tensor: (src_len, b)
+        target_padded = self.vocab.tgt.to_input_tensor(target, device=self.device)   # Tensor: (tgt_len, b)
 
-    def forward(x):
-        encoded = self.encoder(x)
-        decoded = self.decoder(encoded)
-        return decoded
+        X = self.model_embeddings.source(source_padded)
+        Y = self.model_embeddings.target(target_padded)
+        
+        return self.transformer(X, Y)
+
+        # encoded = self.encode(source_padded)
+        # enc_masks = self.generate_sent_masks(enc_hiddens, source_lengths)
+        # combined_outputs = self.decode(enc_hiddens, enc_masks, dec_init_state, target_padded)
+        # P = F.log_softmax(self.target_vocab_projection(combined_outputs), dim=-1)
+
+        # # Zero out, probabilities for which we have nothing in the target text
+        # target_masks = (target_padded != self.vocab.tgt['<pad>']).float()
+        
+        # # Compute log probability of generating true target words
+        # target_gold_words_log_prob = torch.gather(P, index=target_padded[1:].unsqueeze(-1), dim=-1).squeeze(-1) * target_masks[1:]
+        # scores = target_gold_words_log_prob.sum(dim=0)
+        # return scores
+
+    def to(self, device):
+        super().to(device)
+        self.device = device
+        return self
