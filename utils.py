@@ -92,7 +92,7 @@ def get_pacing_batch(data, batch_size, shuffle=False):
         np.random.shuffle(index_array)
     indices = index_array[:batch_size]
     examples = [data[idx] for idx in indices]
-    # skip reverse sorted by length
+    examples = sorted(examples, key=lambda e: len(e[0]), reverse=True)
     src_sents = [e[0] for e in examples]
     tgt_sents = [e[1] for e in examples]
     

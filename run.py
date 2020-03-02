@@ -33,7 +33,7 @@ Options:
     --dropout=<float>                       dropout [default: 0.3]
     --max-decoding-time-step=<int>          maximum number of decoding time steps [default: 70]
     --order-name=<str>                      ordering function name [default: none]
-    --pacing-name=<str>                     pacing function name [default: linear]
+    --pacing-name=<str>                     pacing function name [default: none]
 """
 import math
 import sys
@@ -138,13 +138,13 @@ def train(args: Dict):
 
     vocab = Vocab.load(args['--vocab'], args['--word_freq'])
 
-    # model = NMT(embed_size=int(args['--embed-size']),
-    #             hidden_size=int(args['--hidden-size']),
-    #             dropout_rate=float(args['--dropout']),
-    #             vocab=vocab)
+    model = NMT(embed_size=int(args['--embed-size']),
+                hidden_size=int(args['--hidden-size']),
+                dropout_rate=float(args['--dropout']),
+                vocab=vocab)
     writer = SummaryWriter()
 
-    model = TransformerNMT(vocab, num_hidden_layers=3)
+    # model = TransformerNMT(vocab, num_hidden_layers=3)
 
     model.train()
 
