@@ -2,6 +2,9 @@
 iwslt_word_freq.json
 iwslt.vocab.json
 
+# [ ----- Logs ----- ] 
+runs
+
 
 
 

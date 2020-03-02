@@ -10,7 +10,8 @@
 
 # Usage
 1. Train the model locally on IWSLT with `bash run_iwslt.sh train_local` (with "none" ordering)
-2. Train the model with desired scoring and pacing functions locally on IWSLT e.g. `bash run_iwslt.sh train_local_rarity_linear` (with "rarity" ordering and "linear" pacing)
+
+2. Train the model with desired scoring and pacing functions locally on IWSLT e.g. `bash run_iwslt.sh train_local rarity linear` (with "rarity" ordering and "linear" pacing. see `scoring.py` and `pacing.py` for more options)
 
 # References
 1. Fine-Tuning by Curriculum Learning for Non-Autoregressive
