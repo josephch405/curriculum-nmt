@@ -54,7 +54,7 @@ def read_corpus(file_path, source, space_tokenize=False, dev_mode=False):
         data.append(sent)
         # TODO: nicer iteration dev flag
         i += 1
-        if i > 100 and dev_mode:
+        if i > 10 and dev_mode:
             break
     return data
 

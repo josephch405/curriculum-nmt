@@ -7,6 +7,7 @@ import torch.nn.utils
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence
 import transformers
+import math
 
 from model_embeddings import ModelEmbeddings
 Hypothesis = namedtuple('Hypothesis', ['value', 'score'])
@@ -339,36 +340,94 @@ class NMT(nn.Module):
 
         torch.save(params, path)
 
+class PositionalEncoding(nn.Module):
+
+    def __init__(self, d_model, dropout=0.1, max_len=5000):
+        super(PositionalEncoding, self).__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        pe = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(0).transpose(0, 1)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x):
+        x = x + self.pe[:x.size(0), :]
+        return self.dropout(x)
+
 class TransformerNMT(nn.Module):
     def __init__(self,
-        vocab, embed_size=512):
-        # embed_size,
-        # hidden_size: int,
-        # num_hidden_layers = 6,
-        # num_attention_heads = 8,
-        # intermediate_size = 2048,
-        # dropout_rate = 0.1):
+        vocab, embed_size=512,
+        hidden_size = 2048,
+        num_hidden_layers = 6,
+        num_attention_heads = 8,
+        fc_size = 2048,
+        dropout_rate = 0.1):
         super(TransformerNMT, self).__init__()
 
         self.model_embeddings = ModelEmbeddings(embed_size, vocab)
+        self.pos_encoder = PositionalEncoding(embed_size, dropout_rate)
         self.vocab = vocab
         self.device = None
-        self.transformer = torch.nn.Transformer(d_model=embed_size)
+        self.encoder = torch.nn.TransformerEncoder(
+            torch.nn.TransformerEncoderLayer(
+                d_model = embed_size,
+                nhead = num_attention_heads,
+                dim_feedforward=fc_size,
+                dropout=dropout_rate
+            ), num_hidden_layers
+        )
+        self.decoder = torch.nn.TransformerDecoder(
+            torch.nn.TransformerDecoderLayer(
+                d_model = embed_size,
+                nhead = num_attention_heads,
+                dim_feedforward=fc_size,
+                dropout=dropout_rate
+            ), num_hidden_layers
+        )
+        self.tgt_mask = None
         self.target_vocab_projection = nn.Linear(embed_size, len(vocab.tgt), bias=False)
 
+    def _generate_square_subsequent_mask(self, sz):
+        mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
+        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
+        return mask
 
     def forward(self, source: List[List[str]], target: List[List[str]]) -> torch.Tensor:
         source_lengths = [len(s) for s in source]
         source_padded = self.vocab.src.to_input_tensor(source, device=self.device)   # Tensor: (src_len, b)
         target_padded = self.vocab.tgt.to_input_tensor(target, device=self.device)   # Tensor: (tgt_len, b)
 
+        # X: [seq_length, batch, embed_size]
         X = self.model_embeddings.source(source_padded)
+        X = self.pos_encoder(X)
         Y = self.model_embeddings.target(target_padded)
+        Y = self.pos_encoder(Y)
 
-        target_masks = target_padded == self.vocab.tgt['<pad>']
-        out = self.transformer(X, Y)
-        out_probs = self.target_vocab_projection(out)
-        target_gold_words_log_prob = torch.gather(out_probs[:-1], index=target_padded[1:].unsqueeze(-1), dim=-1).squeeze(-1) * target_masks[1:]
+        tgt_key_padding_masks = (target_padded == self.vocab.tgt['<pad>']).T
+        
+        if self.tgt_mask is None or self.tgt_mask.size(0) != len(Y):
+            self.tgt_mask = self._generate_square_subsequent_mask(len(Y)).to(self.device)
+            # (self.tgt_mask[:])
+        # print(target_pad_masks.T)
+        memory = self.encoder(X)
+        # output = self.decoder(Y, memory, tgt_mask=self.tgt_mask, tgt_key_padding_mask=tgt_key_padding_masks)
+        output = self.decoder(Y, memory, tgt_mask=self.tgt_mask, tgt_key_padding_mask=tgt_key_padding_masks)
+
+        # print(output)
+
+        tgt_key_padding_masks_flipped = (target_padded != self.vocab.tgt['<pad>']).float()
+
+        out_probs = F.log_softmax(self.target_vocab_projection(output), dim=-1)
+        target_gold_words_log_prob = torch.gather(out_probs[:-1], index=target_padded[1:].unsqueeze(-1), dim=-1).squeeze(-1) * tgt_key_padding_masks_flipped[1:]
+        
+        # print()
+        # print(target_padded[:2])
+        # print(target_gold_words_log_prob)
+        # print(out_probs.argmax(-1))
         scores = target_gold_words_log_prob.sum(dim=0)
         return scores
 
