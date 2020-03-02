@@ -1,3 +1,5 @@
+import numpy as np
+
 ### [ ---- PACING FUNCTIONS ---- ] 
 
 def linear(time, max_time, slope, bias):
@@ -8,14 +10,21 @@ def linear(time, max_time, slope, bias):
     @param max_time (int): max epoch
     @param slope (int): step size per unit of time
     @param bias (int): initial value at t=0
-    @returns pacing (int): output pacing
+    @returns pacing (int): pacing value in (0,1)
     """
     if slope is None:
         slope = 1 / max_time
-    return slope * time + bias
+    return min([1, slope * time + bias])
 
-def root():
-    raise NotImplementedError
+def root(time, max_time, bias, p=2):
+    """ Root pacing function.
+    @param time (int): epoch
+    @param max_time (int): max epoch
+    @param bias (int): bias
+    @param p (int): root-p sharpness 
+    @returns pacing (int): pacing value in (0,1)
+    """
+    return min([1, np.sqrt(time * ((1 - bias**2) / max_time) + bias**2)])
 
 ### ------------------------------
 
@@ -36,7 +45,8 @@ def pacing_data(train_data, dev_data, time=None, max_time=None, method=None):
         pacing = linear(time=time, max_time=max_time, slope=None, bias=0.1)
         print("linear pacing is:", pacing)
     elif method == "root":
-        raise NotImplementedError
+        pacing = root(time=time, max_time=max_time, bias=0.1)
+        print("root pacing is:", pacing)
 
     # Slice dataset according to pacing
     pacing_train_idx = int(pacing * len(train_data))

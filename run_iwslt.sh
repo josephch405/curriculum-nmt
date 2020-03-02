@@ -8,8 +8,8 @@ elif [ "$1" = "dev" ]; then
         CUDA_VISIBLE_DEVICES=0 python run.py decode model.bin ./data/iwslt/fr-en/IWSLT16.TED.tst2013.fr-en.fr ./data/iwslt/fr-en/IWSLT16.TED.tst2013.fr-en.en outputs/test_outputs_dev.txt --cuda
 elif [ "$1" = "train_local" ]; then
 	python run.py train --train-src=./data/iwslt/fr-en/train.fr-en.fr --train-tgt=./data/iwslt/fr-en/train.fr-en.en --dev-src=./data/iwslt/fr-en/IWSLT16.TED.tst2013.fr-en.fr --dev-tgt=./data/iwslt/fr-en/IWSLT16.TED.tst2013.fr-en.en --vocab=iwslt_vocab.json --word_freq=iwslt_word_freq.json
-elif [ "$1" = "train_local_rarity" ]; then
-	python run.py train --train-src=./data/iwslt/fr-en/train.fr-en.fr --train-tgt=./data/iwslt/fr-en/train.fr-en.en --dev-src=./data/iwslt/fr-en/IWSLT16.TED.tst2013.fr-en.fr --dev-tgt=./data/iwslt/fr-en/IWSLT16.TED.tst2013.fr-en.en --vocab=iwslt_vocab.json --word_freq=iwslt_word_freq.json --order-name rarity
+elif [ "$1" = "train_local_rarity_linear" ]; then
+	python run.py train --train-src=./data/iwslt/fr-en/train.fr-en.fr --train-tgt=./data/iwslt/fr-en/train.fr-en.en --dev-src=./data/iwslt/fr-en/IWSLT16.TED.tst2013.fr-en.fr --dev-tgt=./data/iwslt/fr-en/IWSLT16.TED.tst2013.fr-en.en --vocab=iwslt_vocab.json --word_freq=iwslt_word_freq.json --order-name rarity --pacing-name root
 elif [ "$1" = "test_local" ]; then
     python run.py decode model.bin ./en_es_data/test.es ./en_es_data/test.en outputs/test_outputs.txt
 elif [ "$1" = "download" ]; then
