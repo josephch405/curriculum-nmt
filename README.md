@@ -6,7 +6,9 @@
 1. Install requirements in `requirements.txt`
 1. Run `bash run_iwslt.sh download` to download the IWSLT dataset
 1. Run `bash run_iwslt.sh vocab` to generate vocab files. This generates a
-    `iwslt_vocab.json` and 'iwslt_word_freq.json`
+    `iwslt_vocab.json` and `iwslt_word_freq.json`
+
+# Usage
 1. Train the model locally on IWSLT with `bash run_iwslt.sh train_local` (with "none" ordering)
 2. Train the model locally on IWSLT with `bash run_iwslt.sh train_local_rarity` (with "rarity" ordering)
 
