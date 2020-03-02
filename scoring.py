@@ -66,6 +66,7 @@ def load_order(order_name, dataset, vocab):
     @param dataset (tuple): a tuple of lists (train_data, dev_data)
     @param vocab (Vocab): a Vocab object containing (vocab.src, vocab.tgt)
     @returns order (Dataset): an ordered dataset of (train_data, dev_data) 
+        in increasing order (easy difficulty to hard difficulty) 
     """
     orderings = ["none", "bert", "rarity", "length"]
     print("order name is:", order_name)

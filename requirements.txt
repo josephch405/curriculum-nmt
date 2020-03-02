@@ -5,3 +5,4 @@ pytorch-nlp
 docopt
 nltk
 tensorboard
+matplotlib

@@ -183,6 +183,7 @@ def train(args: Dict):
     (train_data, dev_data) = ordered_dataset
     
     n_iters = math.ceil(len(train_data) / train_batch_size)
+    print("n_iters per epoch is {}: ({} / {})".format(n_iters, len(train_data), train_batch_size))
 
     print('begin Maximum Likelihood training')
     print('Using order function: {}'.format(args['--order-name']))
