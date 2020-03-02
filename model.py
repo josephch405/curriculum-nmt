@@ -354,15 +354,23 @@ class TransformerNMT(nn.Module):
         self.vocab = vocab
         self.device = None
         self.transformer = torch.nn.Transformer(d_model=embed_size)
+        self.target_vocab_projection = nn.Linear(embed_size, len(vocab.tgt), bias=False)
+
 
     def forward(self, source: List[List[str]], target: List[List[str]]) -> torch.Tensor:
+        source_lengths = [len(s) for s in source]
         source_padded = self.vocab.src.to_input_tensor(source, device=self.device)   # Tensor: (src_len, b)
         target_padded = self.vocab.tgt.to_input_tensor(target, device=self.device)   # Tensor: (tgt_len, b)
 
         X = self.model_embeddings.source(source_padded)
         Y = self.model_embeddings.target(target_padded)
-        
-        return self.transformer(X, Y)
+
+        target_masks = target_padded == self.vocab.tgt['<pad>']
+        out = self.transformer(X, Y)
+        out_probs = self.target_vocab_projection(out)
+        target_gold_words_log_prob = torch.gather(out_probs[:-1], index=target_padded[1:].unsqueeze(-1), dim=-1).squeeze(-1) * target_masks[1:]
+        scores = target_gold_words_log_prob.sum(dim=0)
+        return scores
 
         # encoded = self.encode(source_padded)
         # enc_masks = self.generate_sent_masks(enc_hiddens, source_lengths)
