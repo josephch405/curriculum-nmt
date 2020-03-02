@@ -32,7 +32,8 @@ Options:
     --valid-niter=<int>                     perform validation after how many iterations [default: 2000]
     --dropout=<float>                       dropout [default: 0.3]
     --max-decoding-time-step=<int>          maximum number of decoding time steps [default: 70]
-    --order_name=<str>                      ordering function name [default: none]
+    --order-name=<str>                      ordering function name [default: none]
+    --pacing-name=<str>                     pacing function name [default: linear]
 """
 import math
 import sys
@@ -53,6 +54,8 @@ import torch
 import torch.nn.utils
 
 from scoring import load_order, balance_order
+from pacing import pacing_data
+from utils import get_pacing_batch
 
 import gc
 
@@ -126,6 +129,7 @@ def train(args: Dict):
     dev_data = clean_data(dev_data, max_tokens_in_sentence)
 
     train_batch_size = int(args['--batch-size'])
+    dev_batch_size = 128
     clip_grad = float(args['--clip-grad'])
     valid_niter = int(args['--valid-niter'])
     log_every = int(args['--log-every'])
@@ -169,16 +173,35 @@ def train(args: Dict):
 
     print("Sorting dataset based on difficulty...")
     dataset = (train_data, dev_data)
-    ordered_dataset = load_order(args['--order_name'], dataset, vocab)
+    ordered_dataset = load_order(args['--order-name'], dataset, vocab)
     # TODO: order = balance_order(order, dataset)
     (train_data, dev_data) = ordered_dataset
+    
+    n_iters = math.ceil(len(train_data) / train_batch_size)
 
     print('begin Maximum Likelihood training')
-    print('Using sorting function: {}'.format(args['--order_name']))
+    print('Using order function: {}'.format(args['--order-name']))
+    print('Using pacing function: {}'.format(args['--pacing-name']))
     while True:
         epoch += 1
-
-        for src_sents, tgt_sents in batch_iter(train_data, batch_size=train_batch_size, shuffle=False):
+        
+        current_train_data, current_dev_data = pacing_data(
+            train_data, 
+            dev_data, 
+            time=epoch, 
+            max_time=int(args['--max-epoch']),
+            method=args['--pacing-name']
+        )
+        
+        # Uniformly sample batches from the paced dataset
+        for _ in range(n_iters):
+            src_sents, tgt_sents = get_pacing_batch(
+                current_train_data, 
+                batch_size=train_batch_size,
+                shuffle=True
+            )
+        
+        #for src_sents, tgt_sents in batch_iter(current_train_data, batch_size=train_batch_size, shuffle=False):
             train_iter += 1
 
             # ERROR START
@@ -242,7 +265,7 @@ def train(args: Dict):
 
                 # compute dev. ppl and bleu
                 # dev batch size can be a bit larger
-                dev_ppl = evaluate_ppl(model, dev_data, batch_size=128)
+                dev_ppl = evaluate_ppl(model, current_dev_data, batch_size=dev_batch_size)
                 valid_metric = -dev_ppl
 
                 print('validation: iter %d, dev. ppl %f' %

@@ -1,3 +1,10 @@
+# [ ----- VOCAB FILE AND WORD FREQ FILE ----- ] 
+iwslt_word_freq.json
+iwslt.vocab.json
+
+
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

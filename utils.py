@@ -80,3 +80,22 @@ def batch_iter(data, batch_size, shuffle=False):
         tgt_sents = [e[1] for e in examples]
 
         yield src_sents, tgt_sents
+
+def get_pacing_batch(data, batch_size, shuffle=False):
+    """ Returns (not yields) a single batch of source and target sentences
+    @param data (list of (src_sent, tgt_sent)): list of tuples containing src and tgt sents
+    @param batch_size (int): batch size
+    @param shuffle (boolean): whether to randomly shuffle the dataset
+    """
+    index_array = list(range(len(data)))
+    if shuffle:
+        np.random.shuffle(index_array)
+    indices = index_array[:batch_size]
+    examples = [data[idx] for idx in indices]
+    # skip reverse sorted by length
+    src_sents = [e[0] for e in examples]
+    tgt_sents = [e[1] for e in examples]
+    
+    return src_sents, tgt_sents
+    
+
