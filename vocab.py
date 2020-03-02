@@ -1,6 +1,6 @@
 """
 Usage:
-    vocab.py --train-src=<file> --train-tgt=<file> [options] VOCAB_FILE
+    vocab.py --train-src=<file> --train-tgt=<file> [options] VOCAB_FILE WORD_FREQ_FILE
 
 Options:
     -h --help                  Show this screen.
@@ -23,7 +23,7 @@ class VocabEntry(object):
     """ Vocabulary Entry, i.e. structure containing either
     src or tgt language terms.
     """
-    def __init__(self, word2id=None):
+    def __init__(self, word2id=None, word_freq=None):
         """ Init VocabEntry Instance.
         @param word2id (dict): dictionary mapping words 2 indices
         """
@@ -37,6 +37,9 @@ class VocabEntry(object):
             self.word2id['<unk>'] = 3   # Unknown Token
         self.unk_id = self.word2id['<unk>']
         self.id2word = {v: k for k, v in self.word2id.items()}
+
+        self.word_freq = word_freq
+        self.total = sum(self.word_freq.values())
 
     def __getitem__(self, word):
         """ Retrieve word's index. Return the index for the unk
@@ -121,6 +124,20 @@ class VocabEntry(object):
         sents_var = torch.tensor(sents_t, dtype=torch.long, device=device)
         return torch.t(sents_var)
 
+    def words2rarity(self, sent):
+        """ Converts a list of words (src or tgt) into word rarity freqs.
+        @param sents (list[str]): sentence in words
+        @return word_freqs (list[float]): sentence(s) in word freqs
+        """
+        import numpy as np
+        # 1. Compute the word scores
+        # Set default word freq to 0 if doesn't exist in self.word_freq
+        word_scores = [self.word_freq.get(w, 0) / self.total for w in sent]
+        # 2. Compute the sentence log prob
+        sentence_log_prob = -1.0 * sum(np.log(word_scores))
+        return sentence_log_prob
+        
+
     @staticmethod
     def from_corpus(corpus, size, freq_cutoff=2):
         """ Given a corpus construct a Vocab Entry.
@@ -137,6 +154,7 @@ class VocabEntry(object):
         top_k_words = sorted(valid_words, key=lambda w: word_freq[w], reverse=True)[:size]
         for word in top_k_words:
             vocab_entry.add(word)
+        vocab_entry.word_freq = word_freq
         return vocab_entry
 
 
@@ -169,14 +187,16 @@ class Vocab(object):
 
         return Vocab(src, tgt)
 
-    def save(self, file_path):
+    def save(self, file_path, word_freq_file_path):
         """ Save Vocab to file as JSON dump.
         @param file_path (str): file path to vocab file
         """
         json.dump(dict(src_word2id=self.src.word2id, tgt_word2id=self.tgt.word2id), open(file_path, 'w'), indent=2)
 
+        json.dump(dict(src_word_freq=self.src.word_freq, tgt_word_freq=self.tgt.word_freq), open(word_freq_file_path, 'w'), indent=2)
+
     @staticmethod
-    def load(file_path):
+    def load(file_path, word_freq_file_path):
         """ Load vocabulary from JSON dump.
         @param file_path (str): file path to vocab file
         @returns Vocab object loaded from JSON dump
@@ -184,8 +204,11 @@ class Vocab(object):
         entry = json.load(open(file_path, 'r'))
         src_word2id = entry['src_word2id']
         tgt_word2id = entry['tgt_word2id']
+        word_freq = json.load(open(word_freq_file_path, 'r'))
+        src_word_freq = word_freq['src_word_freq']
+        tgt_word_freq = word_freq['tgt_word_freq']
 
-        return Vocab(VocabEntry(src_word2id), VocabEntry(tgt_word2id))
+        return Vocab(VocabEntry(src_word2id, src_word_freq), VocabEntry(tgt_word2id, tgt_word_freq))
 
     def __repr__(self):
         """ Representation of Vocab to be used
@@ -208,5 +231,6 @@ if __name__ == '__main__':
     vocab = Vocab.build(src_sents, tgt_sents, int(args['--size']), int(args['--freq-cutoff']))
     print('generated vocabulary, source %d words, target %d words' % (len(vocab.src), len(vocab.tgt)))
 
-    vocab.save(args['VOCAB_FILE'])
+    vocab.save(args['VOCAB_FILE'], args['WORD_FREQ_FILE'])
     print('vocabulary saved to %s' % args['VOCAB_FILE'])
+    print('word freq saved to %s' % args['WORD_FREQ_FILE'])

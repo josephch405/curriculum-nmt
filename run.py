@@ -1,6 +1,6 @@
 """
 Usage:
-    run.py train --train-src=<file> --train-tgt=<file> --dev-src=<file> --dev-tgt=<file> --vocab=<file> [options]
+    run.py train --train-src=<file> --train-tgt=<file> --dev-src=<file> --dev-tgt=<file> --vocab=<file> --word_freq=<file> [options]
     run.py decode [options] MODEL_PATH TEST_SOURCE_FILE OUTPUT_FILE
     run.py decode [options] MODEL_PATH TEST_SOURCE_FILE TEST_TARGET_FILE OUTPUT_FILE
 
@@ -12,6 +12,7 @@ Options:
     --dev-src=<file>                        dev source file
     --dev-tgt=<file>                        dev target file
     --vocab=<file>                          vocab file
+    --word_freq=<file>                      word freq file
     --seed=<int>                            seed [default: 0]
     --batch-size=<int>                      batch size [default: 64]
     --embed-size=<int>                      embedding size [default: 256]
@@ -31,6 +32,7 @@ Options:
     --valid-niter=<int>                     perform validation after how many iterations [default: 2000]
     --dropout=<float>                       dropout [default: 0.3]
     --max-decoding-time-step=<int>          maximum number of decoding time steps [default: 70]
+    --order_name=<str>                      ordering function name [default: none]
 """
 import math
 import sys
@@ -129,7 +131,7 @@ def train(args: Dict):
     log_every = int(args['--log-every'])
     model_save_path = args['--save-to']
 
-    vocab = Vocab.load(args['--vocab'])
+    vocab = Vocab.load(args['--vocab'], args['--word_freq'])
 
     # model = NMT(embed_size=int(args['--embed-size']),
     #             hidden_size=int(args['--hidden-size']),
@@ -166,14 +168,17 @@ def train(args: Dict):
     train_time = begin_time = time.time()
 
     print("Sorting dataset based on difficulty...")
-    order = load_order(order_name, dataset)
-    order = balance_order(order, dataset)
+    dataset = (train_data, dev_data)
+    ordered_dataset = load_order(args['--order_name'], dataset, vocab)
+    # TODO: order = balance_order(order, dataset)
+    (train_data, dev_data) = ordered_dataset
 
     print('begin Maximum Likelihood training')
+    print('Using sorting function: {}'.format(args['--order_name']))
     while True:
         epoch += 1
 
-        for src_sents, tgt_sents in batch_iter(train_data, batch_size=train_batch_size, shuffle=True):
+        for src_sents, tgt_sents in batch_iter(train_data, batch_size=train_batch_size, shuffle=False):
             train_iter += 1
 
             # ERROR START
