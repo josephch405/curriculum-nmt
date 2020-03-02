@@ -14,7 +14,7 @@ Options:
     --vocab=<file>                          vocab file
     --word_freq=<file>                      word freq file
     --seed=<int>                            seed [default: 0]
-    --batch-size=<int>                      batch size [default: 64]
+    --batch-size=<int>                      batch size [default: 32]
     --embed-size=<int>                      embedding size [default: 256]
     --hidden-size=<int>                     hidden size [default: 256]
     --clip-grad=<float>                     gradient clipping [default: 5.0]
@@ -51,6 +51,7 @@ from vocab import Vocab, VocabEntry
 
 import torch
 import torch.nn.utils
+from torch.utils.tensorboard import SummaryWriter
 
 from scoring import load_order, balance_order
 
@@ -106,7 +107,7 @@ def tuple_length_ok(src_tok: list, tgt_tok: list, limit: int):
 def clean_data(data: list, limit: int):
     return list(filter(lambda t: tuple_length_ok(t[0], t[1], limit), data))
 
-dev_mode = True
+dev_mode = False
 
 def train(args: Dict):
     """ Train the NMT Model.
@@ -137,8 +138,9 @@ def train(args: Dict):
     #             hidden_size=int(args['--hidden-size']),
     #             dropout_rate=float(args['--dropout']),
     #             vocab=vocab)
+    writer = SummaryWriter()
 
-    model = TransformerNMT(vocab)
+    model = TransformerNMT(vocab, num_hidden_layers=3)
 
     model.train()
 
@@ -147,7 +149,10 @@ def train(args: Dict):
         print('uniformly initialize parameters [-%f, +%f]' %
               (uniform_init, uniform_init), file=sys.stderr)
         for p in model.parameters():
-            p.data.uniform_(-uniform_init, uniform_init)
+            if p.dim() > 1:
+                torch.nn.init.xavier_uniform_(p)
+            else:
+                p.data.uniform_(-uniform_init, uniform_init)
 
     vocab_mask = torch.ones(len(vocab.tgt))
     vocab_mask[vocab.tgt['<pad>']] = 0
@@ -192,16 +197,14 @@ def train(args: Dict):
 
             loss.backward()
             # clip gradient
-            grad_norm = torch.nn.utils.clip_grad_norm_(
-                model.parameters(), clip_grad)
+            # grad_norm = torch.nn.utils.clip_grad_norm_(
+            #     model.parameters(), clip_grad)
 
             optimizer.step()
 
             batch_losses_val: int = batch_loss.item()
             report_loss += batch_losses_val
             cum_loss += batch_losses_val
-
-            # ERROR END
 
             tgt_words_num_to_predict = sum(
                 len(s[1:]) for s in tgt_sents)  # omitting leading `<s>`
@@ -222,7 +225,9 @@ def train(args: Dict):
                          (time.time(
                          ) - train_time),
                          time.time() - begin_time), file=sys.stderr)
-
+                writer.add_scalar('Loss/train', report_loss / report_examples, train_iter)
+                writer.add_scalar('ppl/train', math.exp(
+                             report_loss / report_tgt_words), train_iter)
                 train_time = time.time()
                 report_loss = report_tgt_words = report_examples = 0.
 
@@ -235,6 +240,9 @@ def train(args: Dict):
                              cum_loss / cum_tgt_words),
                          cum_examples), file=sys.stderr)
 
+                writer.add_scalar('Loss/valid', cum_loss / cum_examples, train_iter)
+                writer.add_scalar('ppl/valid', np.exp(
+                             cum_loss / cum_tgt_words), train_iter)
                 cum_loss = cum_examples = cum_tgt_words = 0.
                 valid_num += 1
 

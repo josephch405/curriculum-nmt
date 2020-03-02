@@ -6,7 +6,6 @@ import torch.nn as nn
 import torch.nn.utils
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence
-import transformers
 import math
 
 from model_embeddings import ModelEmbeddings
@@ -341,7 +340,6 @@ class NMT(nn.Module):
         torch.save(params, path)
 
 class PositionalEncoding(nn.Module):
-
     def __init__(self, d_model, dropout=0.1, max_len=5000):
         super(PositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(p=dropout)
@@ -361,7 +359,6 @@ class PositionalEncoding(nn.Module):
 class TransformerNMT(nn.Module):
     def __init__(self,
         vocab, embed_size=512,
-        hidden_size = 2048,
         num_hidden_layers = 6,
         num_attention_heads = 8,
         fc_size = 2048,
@@ -372,6 +369,7 @@ class TransformerNMT(nn.Module):
         self.pos_encoder = PositionalEncoding(embed_size, dropout_rate)
         self.vocab = vocab
         self.device = None
+        self.d_model = embed_size
         self.encoder = torch.nn.TransformerEncoder(
             torch.nn.TransformerEncoderLayer(
                 d_model = embed_size,
@@ -389,7 +387,7 @@ class TransformerNMT(nn.Module):
             ), num_hidden_layers
         )
         self.tgt_mask = None
-        self.target_vocab_projection = nn.Linear(embed_size, len(vocab.tgt), bias=False)
+        self.target_vocab_projection = nn.Linear(embed_size, len(vocab.tgt))
 
     def _generate_square_subsequent_mask(self, sz):
         mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
@@ -399,12 +397,12 @@ class TransformerNMT(nn.Module):
     def forward(self, source: List[List[str]], target: List[List[str]]) -> torch.Tensor:
         source_lengths = [len(s) for s in source]
         source_padded = self.vocab.src.to_input_tensor(source, device=self.device)   # Tensor: (src_len, b)
-        target_padded = self.vocab.tgt.to_input_tensor(target, device=self.device)   # Tensor: (tgt_len, b)
+        target_padded = self.vocab.tgt.to_input_tensor(target, device=self.device)  # Tensor: (tgt_len, b)
 
         # X: [seq_length, batch, embed_size]
-        X = self.model_embeddings.source(source_padded)
+        X = self.model_embeddings.source(source_padded) * math.sqrt(self.d_model)
         X = self.pos_encoder(X)
-        Y = self.model_embeddings.target(target_padded)
+        Y = self.model_embeddings.target(target_padded) * math.sqrt(self.d_model)
         Y = self.pos_encoder(Y)
 
         tgt_key_padding_masks = (target_padded == self.vocab.tgt['<pad>']).T
@@ -412,22 +410,47 @@ class TransformerNMT(nn.Module):
         if self.tgt_mask is None or self.tgt_mask.size(0) != len(Y):
             self.tgt_mask = self._generate_square_subsequent_mask(len(Y)).to(self.device)
             # (self.tgt_mask[:])
-        # print(target_pad_masks.T)
+        # print(self.tgt_mask)
+        src_padding_masks = (source_padded == self.vocab.src['<pad>']).T
+        # memory, enc_attn = self.encoder(source_padded, attention_mask=src_padding_masks)
+        # memory: [t, batch_size, embed_n]
         memory = self.encoder(X)
-        # output = self.decoder(Y, memory, tgt_mask=self.tgt_mask, tgt_key_padding_mask=tgt_key_padding_masks)
-        output = self.decoder(Y, memory, tgt_mask=self.tgt_mask, tgt_key_padding_mask=tgt_key_padding_masks)
+        # memory[1] += 1
+        # print(memory[:2])
+        # Y[1] += 1
+        output = self.decoder(
+            tgt=Y,
+            memory=memory,
+            memory_key_padding_mask=src_padding_masks,
+            tgt_mask=self.tgt_mask,
+            tgt_key_padding_mask=tgt_key_padding_masks)
+        # print(memory.shape)
+        # tgt_padding_masks = (target_padded != self.vocab.tgt['<pad>'])
+        # output, _, dec_attn = self.decoder(target_padded, attention_mask=tgt_padding_masks, encoder_hidden_states= memory)
+        # print(output.shape)
+        # print(output[:3, 0])
+        # print(output.shape)
+        # print(output[0,:, :20])
+        # output = self.pos_encoder(output)
 
-        # print(output)
-
-        tgt_key_padding_masks_flipped = (target_padded != self.vocab.tgt['<pad>']).float()
-
-        out_probs = F.log_softmax(self.target_vocab_projection(output), dim=-1)
-        target_gold_words_log_prob = torch.gather(out_probs[:-1], index=target_padded[1:].unsqueeze(-1), dim=-1).squeeze(-1) * tgt_key_padding_masks_flipped[1:]
+        tgt_padding_masks = (target_padded != self.vocab.tgt['<pad>']).float()
+        # print(tgt_padding_masks.shape)
+        # print(self.target_vocab_projection(output).shape)
+        out_probs = F.log_softmax(self.target_vocab_projection(output), dim=-1)#.permute(1, 0, 2)
+        # print(out_probs.shape)
+        # print(target_padded.shape)
+        # print(target_padded.T[1:].unsqueeze(-1).shape)
+        # print(torch.gather(out_probs[:-1], index=target_padded.T[1:].unsqueeze(-1), dim=-1))
+        target_gold_words_log_prob = torch.gather(out_probs[:-1], index=target_padded[1:].unsqueeze(-1), dim=-1).squeeze(-1) * tgt_padding_masks[1:]
         
         # print()
         # print(target_padded[:2])
-        # print(target_gold_words_log_prob)
-        # print(out_probs.argmax(-1))
+        # print(out_probs.shape)
+        # print(out_probs[:, :, 3])
+        # print(out_probs[:, :, 1503])
+        # print(target_gold_words_log_prob.T)
+        # print(target_padded)
+        # print(out_probs.argmax(-1).T)
         scores = target_gold_words_log_prob.sum(dim=0)
         return scores
 
@@ -443,6 +466,19 @@ class TransformerNMT(nn.Module):
         # target_gold_words_log_prob = torch.gather(P, index=target_padded[1:].unsqueeze(-1), dim=-1).squeeze(-1) * target_masks[1:]
         # scores = target_gold_words_log_prob.sum(dim=0)
         # return scores
+
+    def save(self, path: str):
+        """ Save the odel to a file.
+        @param path (str): path to the model
+        """
+        print('save model parameters to [%s]' % path, file=sys.stderr)
+
+        params = {
+            'vocab': self.vocab,
+            'state_dict': self.state_dict()
+        }
+
+        torch.save(params, path)
 
     def to(self, device):
         super().to(device)
