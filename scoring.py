@@ -109,7 +109,9 @@ def visualize_scoring(ordered_dataset, vocab):
     medium_examples = train_data[skip + int(len(train_data) / 2):skip + int(len(train_data) / 2) + num_medium]
     hard_examples = train_data[-num_hard:]
     
-    print("***** [ Easy examples ] *****", easy_examples)
+    print("\n***** [ Easy examples ] *****")
+    print("Source:\n", " ".join(easy_examples[0][0]))
+    print("Target:\n", " ".join(easy_examples[0][1]))
     src_word_scores, src_sent_score = src_vocab.words2rarity(easy_examples[0][0])
     tgt_word_scores, tgt_sent_score = tgt_vocab.words2rarity(easy_examples[0][1])
     print("src_word_scores:", src_word_scores)
@@ -117,7 +119,9 @@ def visualize_scoring(ordered_dataset, vocab):
     print("tgt_word_scores:", tgt_word_scores)
     print("tgt_sent_score:", tgt_sent_score)
 
-    print("***** [ Medium examples ] *****", medium_examples)
+    print("\n***** [ Medium examples ] *****")
+    print("Source:\n", " ".join(medium_examples[0][0]))
+    print("Target:\n", " ".join(medium_examples[0][1]))
     src_word_scores, src_sent_score = src_vocab.words2rarity(medium_examples[0][0])
     tgt_word_scores, tgt_sent_score = tgt_vocab.words2rarity(medium_examples[0][1])
     print("src_word_scores:", src_word_scores)
@@ -125,7 +129,9 @@ def visualize_scoring(ordered_dataset, vocab):
     print("tgt_word_scores:", tgt_word_scores)
     print("tgt_sent_score:", tgt_sent_score)
 
-    print("***** [ Hard examples ] *****", hard_examples)
+    print("\n***** [ Hard examples ] *****")
+    print("Source:\n", " ".join(hard_examples[0][0]))
+    print("Target:\n", " ".join(hard_examples[0][1]))
     src_word_scores, src_sent_score = src_vocab.words2rarity(hard_examples[0][0])
     tgt_word_scores, tgt_sent_score = tgt_vocab.words2rarity(hard_examples[0][1])
     print("src_word_scores:", src_word_scores)
