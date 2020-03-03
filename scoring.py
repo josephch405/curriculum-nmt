@@ -16,14 +16,14 @@ def rarity_scores(dataset, vocab):
 
     train_scores = []
     for (src_sent, tgt_sent) in train_data:
-        src_score = src_vocab.words2rarity(src_sent)
-        tgt_score = tgt_vocab.words2rarity(tgt_sent)
-        train_scores.append((src_score, tgt_score))
+        src_word_scores, src_sent_score = src_vocab.words2rarity(src_sent)
+        tgt_word_scores, tgt_sent_score = tgt_vocab.words2rarity(tgt_sent)
+        train_scores.append((src_sent_score, tgt_sent_score))
     dev_scores = []
     for (src_sent, tgt_sent) in dev_data:
-        src_score = src_vocab.words2rarity(src_sent)
-        tgt_score = tgt_vocab.words2rarity(tgt_sent)
-        dev_scores.append((src_score, tgt_score))
+        src_word_scores, src_sent_score = src_vocab.words2rarity(src_sent)
+        tgt_word_scores, tgt_sent_score = tgt_vocab.words2rarity(tgt_sent)
+        dev_scores.append((src_sent_score, tgt_sent_score))
     
     return (train_scores, dev_scores)
 
@@ -92,8 +92,47 @@ def balance_order(order, dataset):
     """
     pass
 
-# if __name__ == "__main__":
-#     print("Creating difficulty visualizations.")
+def visualize_scoring(ordered_dataset, vocab):
+    """ Visualizes difficulty of sentences.
+    @param ordered_dataset (Dataset): dataset of (train_data, dev_data)
+    @param vocab (Vocab): Vocabulary with vocab.src and vocab.tgt
+    """
+    train_data, dev_data = ordered_dataset
+    src_vocab, tgt_vocab = vocab.src, vocab.tgt
+    print("Creating scoring visualizations.")
+    num_easy = 1
+    skip = 30
+    num_medium = 1
+    num_hard = 1
+    
+    easy_examples = train_data[skip:skip+num_easy]
+    medium_examples = train_data[skip + int(len(train_data) / 2):skip + int(len(train_data) / 2) + num_medium]
+    hard_examples = train_data[-num_hard:]
+    
+    print("***** [ Easy examples ] *****", easy_examples)
+    src_word_scores, src_sent_score = src_vocab.words2rarity(easy_examples[0][0])
+    tgt_word_scores, tgt_sent_score = tgt_vocab.words2rarity(easy_examples[0][1])
+    print("src_word_scores:", src_word_scores)
+    print("src_sent_score:", src_sent_score)
+    print("tgt_word_scores:", tgt_word_scores)
+    print("tgt_sent_score:", tgt_sent_score)
+
+    print("***** [ Medium examples ] *****", medium_examples)
+    src_word_scores, src_sent_score = src_vocab.words2rarity(medium_examples[0][0])
+    tgt_word_scores, tgt_sent_score = tgt_vocab.words2rarity(medium_examples[0][1])
+    print("src_word_scores:", src_word_scores)
+    print("src_sent_score:", src_sent_score)
+    print("tgt_word_scores:", tgt_word_scores)
+    print("tgt_sent_score:", tgt_sent_score)
+
+    print("***** [ Hard examples ] *****", hard_examples)
+    src_word_scores, src_sent_score = src_vocab.words2rarity(hard_examples[0][0])
+    tgt_word_scores, tgt_sent_score = tgt_vocab.words2rarity(hard_examples[0][1])
+    print("src_word_scores:", src_word_scores)
+    print("src_sent_score:", src_sent_score)
+    print("tgt_word_scores:", tgt_word_scores)
+    print("tgt_sent_score:", tgt_sent_score)
+    exit(1)
     
     
 

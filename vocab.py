@@ -127,6 +127,7 @@ class VocabEntry(object):
     def words2rarity(self, sent):
         """ Converts a list of words (src or tgt) into word rarity freqs.
         @param sents (list[str]): sentence in words
+        @return word_scores (list[list[int]]): word scores
         @return word_freqs (list[float]): sentence(s) in word freqs
         """
         import numpy as np
@@ -135,7 +136,7 @@ class VocabEntry(object):
         word_scores = [self.word_freq.get(w, 0) / self.total for w in sent]
         # 2. Compute the sentence log prob
         sentence_log_prob = -1.0 * sum(np.log(word_scores))
-        return sentence_log_prob
+        return word_scores, sentence_log_prob
         
 
     @staticmethod

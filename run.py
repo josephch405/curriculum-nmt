@@ -35,6 +35,7 @@ Options:
     --max-decoding-time-step=<int>          maximum number of decoding time steps [default: 70]
     --order-name=<str>                      ordering function name [default: none]
     --pacing-name=<str>                     pacing function name [default: none]
+    --ignore-test-bleu=<int>                whether or not to ignore bleu scores (train_local)
 """
 import math
 import sys
@@ -55,7 +56,7 @@ import torch
 import torch.nn.utils
 from torch.utils.tensorboard import SummaryWriter
 
-from scoring import load_order, balance_order
+from scoring import load_order, balance_order, visualize_scoring
 from pacing import pacing_data
 from utils import get_pacing_batch
 
@@ -131,12 +132,13 @@ def train(args: Dict):
     dev_data_tgt = read_corpus(
         args['--dev-tgt'], source='tgt', dev_mode=dev_mode)
 
-    test_data_src = read_corpus(
-        args['--test-src'], source='src', dev_mode=dev_mode
-    )
-    test_data_tgt = read_corpus(
-        args['--test-tgt'], source='tgt', dev_mode=dev_mode
-    )
+    if not args['--ignore-test-bleu']:
+        test_data_src = read_corpus(
+            args['--test-src'], source='src', dev_mode=dev_mode
+        )
+        test_data_tgt = read_corpus(
+            args['--test-tgt'], source='tgt', dev_mode=dev_mode
+        )
 
     train_data = list(zip(train_data_src, train_data_tgt))
     dev_data = list(zip(dev_data_src, dev_data_tgt))
@@ -198,6 +200,10 @@ def train(args: Dict):
     ordered_dataset = load_order(args['--order-name'], dataset, vocab)
     # TODO: order = balance_order(order, dataset)
     (train_data, dev_data) = ordered_dataset
+
+    visualize_scoring_examples = True
+    if visualize_scoring_examples:
+        visualize_scoring(ordered_dataset, vocab)
 
     n_iters = math.ceil(len(train_data) / train_batch_size)
     print("n_iters per epoch is {}: ({} / {})".format(n_iters,
@@ -275,7 +281,7 @@ def train(args: Dict):
                 report_loss = report_tgt_words = report_examples = 0.
 
             # evaluate BLEU
-            if train_iter % bleu_niter == 0:
+            if train_iter % bleu_niter == 0 and not args['--ignore-test-blue']:
                 bleu = decode_with_params(model,
                     test_data_src,
                     test_data_tgt,
