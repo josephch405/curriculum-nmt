@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ "$1" = "train" ]; then
-	CUDA_VISIBLE_DEVICES=0 python run.py train --train-src=./data/iwslt/fr-en/train.fr-en.fr --train-tgt=./data/iwslt/fr-en/train.fr-en.en --dev-src=./data/iwslt/fr-en/IWSLT16.TED.tst2013.fr-en.fr --dev-tgt=./data/iwslt/fr-en/IWSLT16.TED.tst2013.fr-en.en --vocab=iwslt_vocab.json --word_freq=iwslt_word_freq.json --cuda
+	CUDA_VISIBLE_DEVICES=0 python run.py train --train-src=./data/iwslt/fr-en/train.fr-en.fr --train-tgt=./data/iwslt/fr-en/train.fr-en.en --dev-src=./data/iwslt/fr-en/IWSLT16.TED.tst2013.fr-en.fr --dev-tgt=./data/iwslt/fr-en/IWSLT16.TED.tst2013.fr-en.en --test-src=./data/iwslt/fr-en/IWSLT16.TED.tst2014.fr-en.fr --test-tgt=./data/iwslt/fr-en/IWSLT16.TED.tst2014.fr-en.en --vocab=iwslt_vocab.json --word_freq=iwslt_word_freq.json --cuda
 elif [ "$1" = "test" ]; then
         CUDA_VISIBLE_DEVICES=0 python run.py decode model.bin ./data/iwslt/fr-en/IWSLT16.TED.tst2014.fr-en.fr ./data/iwslt/fr-en/IWSLT16.TED.tst2014.fr-en.en outputs/test_outputs.txt --cuda
 elif [ "$1" = "dev" ]; then

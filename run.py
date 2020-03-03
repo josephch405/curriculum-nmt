@@ -1,6 +1,6 @@
 """
 Usage:
-    run.py train --train-src=<file> --train-tgt=<file> --dev-src=<file> --dev-tgt=<file> --vocab=<file> --word_freq=<file> [options]
+    run.py train --train-src=<file> --train-tgt=<file> --dev-src=<file> --dev-tgt=<file> [--test-src=<file> --test-tgt=<file>] --vocab=<file> --word_freq=<file> [options]
     run.py decode [options] MODEL_PATH TEST_SOURCE_FILE OUTPUT_FILE
     run.py decode [options] MODEL_PATH TEST_SOURCE_FILE TEST_TARGET_FILE OUTPUT_FILE
 
@@ -19,7 +19,7 @@ Options:
     --hidden-size=<int>                     hidden size [default: 256]
     --clip-grad=<float>                     gradient clipping [default: 5.0]
     --log-every=<int>                       log every [default: 10]
-    --max-epoch=<int>                       max epoch [default: 30]
+    --max-epoch=<int>                       max epoch [default: 10]
     --input-feed                            use input feeding
     --patience=<int>                        wait for how many iterations to decay learning rate [default: 5]
     --max-num-trial=<int>                   terminate training after how many trials [default: 5]
@@ -30,6 +30,7 @@ Options:
     --uniform-init=<float>                  uniformly initialize all parameters [default: 0.1]
     --save-to=<file>                        model save path [default: model.bin]
     --valid-niter=<int>                     perform validation after how many iterations [default: 2000]
+    --bleu-niter=<int>                      perform BLEU evaluation on test set every N inters [default: 500]
     --dropout=<float>                       dropout [default: 0.3]
     --max-decoding-time-step=<int>          maximum number of decoding time steps [default: 70]
     --order-name=<str>                      ordering function name [default: none]
@@ -104,23 +105,38 @@ def compute_corpus_level_bleu_score(references: List[List[str]], hypotheses: Lis
                              [hyp.value for hyp in hypotheses])
     return bleu_score
 
+
 def tuple_length_ok(src_tok: list, tgt_tok: list, limit: int):
     return len(src_tok) < limit and len(tgt_tok) < limit
+
 
 def clean_data(data: list, limit: int):
     return list(filter(lambda t: tuple_length_ok(t[0], t[1], limit), data))
 
+
 dev_mode = False
+
 
 def train(args: Dict):
     """ Train the NMT Model.
     @param args (Dict): args from cmd line
     """
-    train_data_src = read_corpus(args['--train-src'], source='src', dev_mode=dev_mode)
-    train_data_tgt = read_corpus(args['--train-tgt'], source='tgt', dev_mode=dev_mode)
+    train_data_src = read_corpus(
+        args['--train-src'], source='src', dev_mode=dev_mode)
+    train_data_tgt = read_corpus(
+        args['--train-tgt'], source='tgt', dev_mode=dev_mode)
 
-    dev_data_src = read_corpus(args['--dev-src'], source='src', dev_mode=dev_mode)
-    dev_data_tgt = read_corpus(args['--dev-tgt'], source='tgt', dev_mode=dev_mode)
+    dev_data_src = read_corpus(
+        args['--dev-src'], source='src', dev_mode=dev_mode)
+    dev_data_tgt = read_corpus(
+        args['--dev-tgt'], source='tgt', dev_mode=dev_mode)
+
+    test_data_src = read_corpus(
+        args['--test-src'], source='src', dev_mode=dev_mode
+    )
+    test_data_tgt = read_corpus(
+        args['--test-tgt'], source='tgt', dev_mode=dev_mode
+    )
 
     train_data = list(zip(train_data_src, train_data_tgt))
     dev_data = list(zip(dev_data_src, dev_data_tgt))
@@ -133,6 +149,7 @@ def train(args: Dict):
     dev_batch_size = 128
     clip_grad = float(args['--clip-grad'])
     valid_niter = int(args['--valid-niter'])
+    bleu_niter = int(args['--bleu-niter'])
     log_every = int(args['--log-every'])
     model_save_path = args['--save-to']
 
@@ -181,33 +198,34 @@ def train(args: Dict):
     ordered_dataset = load_order(args['--order-name'], dataset, vocab)
     # TODO: order = balance_order(order, dataset)
     (train_data, dev_data) = ordered_dataset
-    
+
     n_iters = math.ceil(len(train_data) / train_batch_size)
-    print("n_iters per epoch is {}: ({} / {})".format(n_iters, len(train_data), train_batch_size))
+    print("n_iters per epoch is {}: ({} / {})".format(n_iters,
+                                                      len(train_data), train_batch_size))
 
     print('begin Maximum Likelihood training')
     print('Using order function: {}'.format(args['--order-name']))
     print('Using pacing function: {}'.format(args['--pacing-name']))
     while True:
         epoch += 1
-        
+
         current_train_data, current_dev_data = pacing_data(
-            train_data, 
-            dev_data, 
-            time=epoch, 
+            train_data,
+            dev_data,
+            time=epoch,
             max_time=int(args['--max-epoch']),
             method=args['--pacing-name']
         )
-        
+
         # Uniformly sample batches from the paced dataset
-        for _ in range(n_iters):
+        for _ in range(len(current_train_data) // train_batch_size):
             src_sents, tgt_sents = get_pacing_batch(
-                current_train_data, 
+                current_train_data,
                 batch_size=train_batch_size,
                 shuffle=True
             )
-        
-        #for src_sents, tgt_sents in batch_iter(current_train_data, batch_size=train_batch_size, shuffle=False):
+
+        # for src_sents, tgt_sents in batch_iter(current_train_data, batch_size=train_batch_size, shuffle=False):
             train_iter += 1
 
             # ERROR START
@@ -221,8 +239,8 @@ def train(args: Dict):
 
             loss.backward()
             # clip gradient
-            # grad_norm = torch.nn.utils.clip_grad_norm_(
-            #     model.parameters(), clip_grad)
+            grad_norm = torch.nn.utils.clip_grad_norm_(
+                model.parameters(), clip_grad)
 
             optimizer.step()
 
@@ -249,11 +267,22 @@ def train(args: Dict):
                          (time.time(
                          ) - train_time),
                          time.time() - begin_time), file=sys.stderr)
-                writer.add_scalar('Loss/train', report_loss / report_examples, train_iter)
+                writer.add_scalar('Loss/train', report_loss /
+                                  report_examples, train_iter)
                 writer.add_scalar('ppl/train', math.exp(
-                             report_loss / report_tgt_words), train_iter)
+                    report_loss / report_tgt_words), train_iter)
                 train_time = time.time()
                 report_loss = report_tgt_words = report_examples = 0.
+
+            # evaluate BLEU
+            if train_iter % bleu_niter == 0:
+                bleu = decode_with_params(model,
+                    test_data_src,
+                    test_data_tgt,
+                    int(args['--beam-size']),
+                    int(args['--max-decoding-time-step'])
+                    )
+                writer.add_scalar('bleu/test', bleu, train_iter)
 
             # perform validation
             if train_iter % valid_niter == 0:
@@ -264,9 +293,6 @@ def train(args: Dict):
                              cum_loss / cum_tgt_words),
                          cum_examples), file=sys.stderr)
 
-                writer.add_scalar('Loss/valid', cum_loss / cum_examples, train_iter)
-                writer.add_scalar('ppl/valid', np.exp(
-                             cum_loss / cum_tgt_words), train_iter)
                 cum_loss = cum_examples = cum_tgt_words = 0.
                 valid_num += 1
 
@@ -274,8 +300,12 @@ def train(args: Dict):
 
                 # compute dev. ppl and bleu
                 # dev batch size can be a bit larger
-                dev_ppl = evaluate_ppl(model, current_dev_data, batch_size=dev_batch_size)
+                dev_ppl = evaluate_ppl(
+                    model, current_dev_data, batch_size=dev_batch_size)
                 valid_metric = -dev_ppl
+                writer.add_scalar('ppl/valid', dev_ppl, train_iter)
+                cum_loss = cum_examples = cum_tgt_words = 0.
+                valid_num += 1
 
                 print('validation: iter %d, dev. ppl %f' %
                       (train_iter, dev_ppl), file=sys.stderr)
@@ -347,6 +377,8 @@ def decode(args: Dict[str, str]):
         print("load test target sentences from [{}]".format(
             args['TEST_TARGET_FILE']), file=sys.stderr)
         test_data_tgt = read_corpus(args['TEST_TARGET_FILE'], source='tgt')
+    else:
+        test_data_tgt = None
 
     print("load model from {}".format(args['MODEL_PATH']), file=sys.stderr)
     model = NMT.load(args['MODEL_PATH'])
@@ -354,21 +386,39 @@ def decode(args: Dict[str, str]):
     if args['--cuda']:
         model = model.to(torch.device("cuda:0"))
 
-    hypotheses = beam_search(model, test_data_src,
-                             beam_size=int(args['--beam-size']),
-                             max_decoding_time_step=int(args['--max-decoding-time-step']))
+    beam_size = int(args['--beam-size'])
+    max_decoding_time_step = int(args['--max-decoding-time-step'])
+    output_file = args['OUTPUT_FILE']
 
-    if args['TEST_TARGET_FILE']:
+    decode_with_params(
+        model, test_data_src, test_data_tgt, beam_size,
+        max_decoding_time_step, output_file)
+
+
+def decode_with_params(
+        model,
+        test_data_src,
+        test_data_tgt,
+        beam_size,
+        max_decoding_time_step,
+        output_file: str = None):
+    hypotheses = beam_search(model, test_data_src,
+                             beam_size=beam_size,
+                             max_decoding_time_step=max_decoding_time_step)
+
+    if test_data_tgt:
         top_hypotheses = [hyps[0] for hyps in hypotheses]
         bleu_score = compute_corpus_level_bleu_score(
             test_data_tgt, top_hypotheses)
         print('Corpus BLEU: {}'.format(bleu_score * 100), file=sys.stderr)
 
-    with open(args['OUTPUT_FILE'], 'w') as f:
-        for src_sent, hyps in zip(test_data_src, hypotheses):
-            top_hyp = hyps[0]
-            hyp_sent = ' '.join(top_hyp.value)
-            f.write(hyp_sent + '\n')
+    if output_file:
+        with open(output_file, 'w') as f:
+            for src_sent, hyps in zip(test_data_src, hypotheses):
+                top_hyp = hyps[0]
+                hyp_sent = ' '.join(top_hyp.value)
+                f.write(hyp_sent + '\n')
+    return bleu_score * 100
 
 
 def beam_search(model: NMT, test_data_src: List[List[str]], beam_size: int, max_decoding_time_step: int) -> List[List[Hypothesis]]:
