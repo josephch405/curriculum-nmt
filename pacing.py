@@ -5,38 +5,41 @@ import numpy as np
 def none():
     return 1
 
-def linear(time, max_time, slope, bias):
+def linear(time, max_epoch, n_iters, slope, bias):
     """ Simple linear pacing function that takes in a slope and a bias 
     and computes the pacing over time. If not slope is None, then compute 
     slope based on the max time.
-    @param time (int): epoch
-    @param max_time (int): max epoch
+    @param time (int): current train iter
+    @param max_epoch (int): max epoch
+    @param n_iters (int): number of iterations per epoch
     @param slope (int): step size per unit of time
-    @param bias (int): initial value at t=0
+    @param bias (int): initial value at t=0 in (0,1)
     @returns pacing (int): pacing value in (0,1)
     """
     if slope is None:
-        slope = 1 / max_time
+        slope = 1 / (max_epoch * n_iters)
     return min([1, slope * time + bias])
 
-def root(time, max_time, bias, p=2):
+def root(time, max_epoch, n_iters, bias, p=2):
     """ Root pacing function.
     @param time (int): epoch
-    @param max_time (int): max epoch
-    @param bias (int): bias
+    @param max_epoch (int): max epoch
+    @param n_iters (int): number of iterations per epoch
+    @param bias (int): bias in (0,1)
     @param p (int): root-p sharpness 
     @returns pacing (int): pacing value in (0,1)
     """
-    return min([1, np.sqrt(time * ((1 - bias**2) / max_time) + bias**2)])
+    return min([1, np.sqrt(time * ((1 - bias**2) / (n_iters * max_epoch)) + bias**2)])
 
 ### ------------------------------
 
-def pacing_data(train_data, dev_data, time=None, max_time=None, method=None):
+def pacing_data(train_data, dev_data, time=None, max_epoch=None, n_iters=None, method=None):
     """ Gets the data according to the specified pacing function.
     @param train_data (list): list of tuple of sents
     @param dev_data (list): list of tuple of sents
-    @param time (int): epoch 
-    @param max_time (int): max epoch
+    @param time (int): current train iteration
+    @param max_epoch (int): max epoch
+    @param n_iters (int): number of iterations per epoch
     @param method (str): desired pacing function
     @returns paced_dataset (Dataset): dataset of (current_train_data, current_dev_data)
     """
@@ -47,10 +50,16 @@ def pacing_data(train_data, dev_data, time=None, max_time=None, method=None):
     if method == "none":
         pacing = none()
     elif method == "linear":
-        pacing = linear(time=time, max_time=max_time, slope=None, bias=0.1)
+        pacing = linear(
+            time=time, 
+            max_epoch=max_epoch, 
+            n_iters=n_iters, 
+            slope=None, 
+            bias=0.05
+        )
         print("linear pacing is:", pacing)
     elif method == "root":
-        pacing = root(time=time, max_time=max_time, bias=0.1)
+        pacing = root(time=time, max_epoch=max_epoch, bias=0.1)
         print("root pacing is:", pacing)
 
     # Slice dataset according to pacing
@@ -65,19 +74,20 @@ def pacing_data(train_data, dev_data, time=None, max_time=None, method=None):
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     print("Creating plot for pacing functions.")
-    T = 1000
-    x = list(range(T))
+    T = 30
+    n_iters = 100
+    x = list(range(T*n_iters))
     
     # None
     y = [none() for t in x]
     plt.plot(x,y)
 
     # Linear
-    y = [linear(t, T, slope=None, bias=0.01) for t in x]
+    y = [linear(t, T, n_iters, slope=None, bias=0.01) for t in x]
     plt.plot(x,y)
     
     # Root
-    y = [root(t, T, bias=0.01) for t in x]
+    y = [root(t, T, n_iters, bias=0.01) for t in x]
     plt.plot(x,y)
 
     plt.legend(['none', 'linear', 'root'], loc='upper left')

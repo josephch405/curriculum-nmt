@@ -208,24 +208,24 @@ def train(args: Dict):
     print('Using pacing function: {}'.format(args['--pacing-name']))
     while True:
         epoch += 1
+        for _ in range(n_iters):
+            # Get pacing data according to train_iter
+            current_train_data, current_dev_data = pacing_data(
+                train_data, 
+                dev_data, 
+                time=train_iter, 
+                max_epoch=int(args['--max-epoch']),
+                n_iters=n_iters,
+                method=args['--pacing-name']
+            )
 
-        current_train_data, current_dev_data = pacing_data(
-            train_data,
-            dev_data,
-            time=epoch,
-            max_time=int(args['--max-epoch']),
-            method=args['--pacing-name']
-        )
-
-        # Uniformly sample batches from the paced dataset
-        for _ in range(len(current_train_data) // train_batch_size):
+            # Uniformly sample batches from the paced dataset
             src_sents, tgt_sents = get_pacing_batch(
                 current_train_data,
                 batch_size=train_batch_size,
                 shuffle=True
             )
 
-        # for src_sents, tgt_sents in batch_iter(current_train_data, batch_size=train_batch_size, shuffle=False):
             train_iter += 1
 
             # ERROR START
