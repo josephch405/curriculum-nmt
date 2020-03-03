@@ -132,7 +132,6 @@ def visualize_scoring(ordered_dataset, vocab):
     print("src_sent_score:", src_sent_score)
     print("tgt_word_scores:", tgt_word_scores)
     print("tgt_sent_score:", tgt_sent_score)
-    exit(1)
     
     
 
