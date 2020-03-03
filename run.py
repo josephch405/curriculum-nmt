@@ -117,11 +117,11 @@ def clean_data(data: list, limit: int):
 
 dev_mode = False
 
-
 def train(args: Dict):
     """ Train the NMT Model.
     @param args (Dict): args from cmd line
     """
+    do_bleu = '--ignore-test-bleu' not in args or not args['--ignore-test-bleu']
     train_data_src = read_corpus(
         args['--train-src'], source='src', dev_mode=dev_mode)
     train_data_tgt = read_corpus(
@@ -132,7 +132,7 @@ def train(args: Dict):
     dev_data_tgt = read_corpus(
         args['--dev-tgt'], source='tgt', dev_mode=dev_mode)
 
-    if not args['--ignore-test-bleu']:
+    if do_bleu:
         test_data_src = read_corpus(
             args['--test-src'], source='src', dev_mode=dev_mode
         )
@@ -201,7 +201,7 @@ def train(args: Dict):
     # TODO: order = balance_order(order, dataset)
     (train_data, dev_data) = ordered_dataset
 
-    visualize_scoring_examples = True
+    visualize_scoring_examples = False
     if visualize_scoring_examples:
         visualize_scoring(ordered_dataset, vocab)
 
@@ -222,7 +222,8 @@ def train(args: Dict):
                 time=train_iter, 
                 max_epoch=int(args['--max-epoch']),
                 n_iters=n_iters,
-                method=args['--pacing-name']
+                method=args['--pacing-name'],
+                tb=writer
             )
 
             # Uniformly sample batches from the paced dataset
@@ -281,7 +282,7 @@ def train(args: Dict):
                 report_loss = report_tgt_words = report_examples = 0.
 
             # evaluate BLEU
-            if train_iter % bleu_niter == 0 and not args['--ignore-test-blue']:
+            if train_iter % bleu_niter == 0 and do_bleu:
                 bleu = decode_with_params(model,
                     test_data_src,
                     test_data_tgt,

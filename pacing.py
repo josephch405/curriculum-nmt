@@ -33,7 +33,7 @@ def root(time, max_epoch, n_iters, bias, p=2):
 
 ### ------------------------------
 
-def pacing_data(train_data, dev_data, time=None, max_epoch=None, n_iters=None, method=None):
+def pacing_data(train_data, dev_data, time=None, max_epoch=None, n_iters=None, method=None, tb=None):
     """ Gets the data according to the specified pacing function.
     @param train_data (list): list of tuple of sents
     @param dev_data (list): list of tuple of sents
@@ -57,16 +57,20 @@ def pacing_data(train_data, dev_data, time=None, max_epoch=None, n_iters=None, m
             slope=None, 
             bias=0.05
         )
-        print("linear pacing is:", pacing)
+        # print("linear pacing is:", pacing)
     elif method == "root":
-        pacing = root(time=time, max_epoch=max_epoch, bias=0.1)
-        print("root pacing is:", pacing)
+        pacing = root(time=time, max_epoch=max_epoch, bias=0.1, n_iters=n_iters)
+        # print("root pacing is:", pacing)
 
     # Slice dataset according to pacing
     pacing_train_idx = int(pacing * len(train_data))
     pacing_dev_idx = int(pacing * len(dev_data))
     sliced_train = train_data[:pacing_train_idx]
     sliced_dev = dev_data[:pacing_dev_idx]
+
+    if tb:
+        tb.add_scalar('pacing', pacing, time)
+        tb.add_scalar('pacing_idx', pacing_train_idx, time)
     
     paced_dataset = (sliced_train, sliced_dev)
     return paced_dataset
