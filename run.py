@@ -19,7 +19,8 @@ Options:
     --hidden-size=<int>                     hidden size [default: 256]
     --clip-grad=<float>                     gradient clipping [default: 5.0]
     --log-every=<int>                       log every [default: 10]
-    --max-epoch=<int>                       max epoch [default: 10]
+    --max-epoch=<int>                       max epoch [default: 5]
+    --warmup-iters=<int>                    warmup iterations [default: 5000]
     --input-feed                            use input feeding
     --patience=<int>                        wait for how many iterations to decay learning rate [default: 5]
     --max-num-trial=<int>                   terminate training after how many trials [default: 5]
@@ -208,6 +209,8 @@ def train(args: Dict):
     n_iters = math.ceil(len(train_data) / train_batch_size)
     print("n_iters per epoch is {}: ({} / {})".format(n_iters,
                                                       len(train_data), train_batch_size))
+    max_epoch = int(args['--max-epoch'])
+    max_iters = max_epoch * n_iters
 
     print('begin Maximum Likelihood training')
     print('Using order function: {}'.format(args['--order-name']))
@@ -220,8 +223,7 @@ def train(args: Dict):
                 train_data, 
                 dev_data, 
                 time=train_iter, 
-                max_epoch=int(args['--max-epoch']),
-                n_iters=n_iters,
+                warmup_iters=int(args["--warmup-iters"]),
                 method=args['--pacing-name'],
                 tb=writer
             )
